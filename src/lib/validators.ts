@@ -197,7 +197,8 @@ export const esquemaContacto = z.object({
     .trim()
     .min(20, "El mensaje debe tener al menos 20 caracteres.")
     .max(2000, "El mensaje no puede superar 2000 caracteres."),
-  honeypot: z.string().max(0, "Envío no válido.").optional().or(z.literal("")),
+  /* Trampa para robots: el servidor la recibe sin quejarse y descarta el envío. */
+  honeypot: z.string().max(200).optional(),
 });
 
 export type DatosContacto = z.infer<typeof esquemaContacto>;

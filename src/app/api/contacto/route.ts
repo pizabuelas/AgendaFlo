@@ -12,6 +12,14 @@ import { tieneContenidoSignificativo } from "@/lib/utils";
 export async function POST(request: NextRequest) {
   const cuerpo = await request.json().catch(() => null);
 
+  /* Trampa para robots (honeypot): si viene relleno se descarta el envío en
+   * silencio, sin validar ni guardar nada, para que el bot no reciba ninguna
+   * señal de que ha sido detectado. */
+  const trampa = cuerpo && typeof cuerpo === "object" ? cuerpo.honeypot : undefined;
+  if (typeof trampa === "string" && trampa.trim() !== "") {
+    return creado(undefined, "Mensaje enviado. Te responderemos lo antes posible.");
+  }
+
   const validacion = esquemaContacto.safeParse(cuerpo);
 
   if (!validacion.success) {
@@ -19,11 +27,6 @@ export async function POST(request: NextRequest) {
       "Revisa los datos del mensaje.",
       validacion.error.flatten().fieldErrors,
     );
-  }
-
-  /* Trampa para robots (honeypot): si viene relleno se descarta el envío. */
-  if (validacion.data.honeypot) {
-    return creado(undefined, "Mensaje enviado. Te responderemos lo antes posible.");
   }
 
   if (!tieneContenidoSignificativo(validacion.data.mensaje)) {
