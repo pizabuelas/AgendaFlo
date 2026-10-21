@@ -183,8 +183,8 @@ tiempo real, encaje de huecos y gestión del ciclo de vida de la cita.
 | 4.4 | Regla: dentro de franja | La hora debe caer en una franja de atención del servicio para ese día de la semana. | `src/lib/services/reservas.ts:156` |
 | 4.5 | Regla: anticipación | Ventana de **0 a 60 días** y margen de **60 minutos** respecto a la hora actual. | `src/lib/constants.ts:102`, `src/lib/services/reservas.ts:118` |
 | 4.6 | Regla: límite de citas activas | Máximo **5** citas en estado `PENDIENTE` o `CONFIRMADA` por usuario. | `src/lib/constants.ts:99` |
-| 4.7 | Regla: no sobre-reservar | Índice único `UNIQUE (servicioId, fecha, hora)` en la base de datos: la garantía no depende de la aplicación. | `prisma/schema.prisma:154` |
-| 4.8 | Gestión del ciclo de vida | Estados `PENDIENTE → CONFIRMADA → COMPLETADA`, con `CANCELADA` disponible desde los dos primeros. | `src/lib/services/reservas.ts`, `src/app/api/reservas/[id]/route.ts` |
+| 4.7 | Regla: no sobre-reservar | Índice único **parcial** `UNIQUE (servicioId, fecha, hora) WHERE estado IN ('PENDIENTE','CONFIRMADA')` en la base de datos: la garantía no depende de la aplicación. | `prisma/schema.prisma:154`, `prisma/migrations/20260103000000_indice_parcial_reservas/migration.sql` |
+| 4.8 | Gestión del ciclo de vida | Estados `PENDIENTE → CONFIRMADA → COMPLETADA`, con `CANCELADA` disponible desde los dos primeros. `COMPLETADA` y `CANCELADA` son terminales: cualquier otra transición se rechaza con `422`. | `src/lib/services/reservas.ts:33`, `src/app/api/reservas/[id]/route.ts` |
 | 4.9 | Cancelación por el usuario | El usuario puede cancelar sus propias citas indicando el motivo; el administrador puede hacerlo sobre cualquier cita. | `src/app/api/reservas/[id]/route.ts:41` |
 | 4.10 | Gestión desde el panel | `/admin/reservas` permite cambiar el estado, filtrar por estado, buscar y eliminar citas. | `src/app/admin/reservas`, `src/components/admin/GestorReservas.tsx` |
 | 4.11 | Historial del usuario | `/mis-reservas` muestra las citas agrupadas (próximas, activas, completadas, canceladas) con su código. | `src/app/mis-reservas/page.tsx`, `src/components/reservas/TarjetaReserva.tsx` |
@@ -194,6 +194,10 @@ tiempo real, encaje de huecos y gestión del ciclo de vida de la cita.
 
 - **La regla anti-sobre-reserva vive en el índice único, no solo en el código.** Una comprobación
   en la aplicación tiene una ventana de carrera; el índice la cierra por completo.
+- **El índice único es parcial a propósito.** Solo las citas activas bloquean un hueco: al
+  cancelar, el horario vuelve a estar disponible y se puede volver a reservar, sin perder la cita
+  cancelada del historial. La agenda y el índice comparten criterio, así que nunca se ofrece un
+  hueco que la reserva vaya a rechazar.
 - **El precio y la duración se congelan en la reserva.** Si el servicio cambia de precio, las
   citas ya cerradas conservan el importe pactado.
 - **Disponibilidad calculada en el servidor.** El cliente nunca decide si un hueco está libre:
@@ -345,7 +349,7 @@ First Load JS shared by all          103 kB
 
 | Criterio | Ponderación | Cumplimiento | Evidencia |
 | --- | :---: | :---: | --- |
-| **Funcionalidad y CRUD** | 35 % | 5/5 RF completos | RF-01…RF-05 implementados y verificados por HTTP (`npm run verificar`). |
+| **Funcionalidad y CRUD** | 35 % | 5/5 RF completos | RF-01…RF-05 implementados y verificados por HTTP (`npm run verificar` y `npm run prueba`: 46 reglas de negocio y seguridad). |
 | **Arquitectura y código** | 25 % | Separación por capas: `app/` (rutas) → `lib/services/` (negocio) → Prisma (datos); componentes por dominio; TypeScript estricto; ESLint sin errores; Git con historial. | `src/`, `eslint.config.mjs`, `git log` |
 | **Diseño y UI/UX** | 20 % | Sistema de tokens, modo claro/oscuro, responsive completo, accesibilidad verificada, microcopy en español. | `src/app/globals.css`, `docs/capturas/` |
 | **Seguridad y rendimiento** | 10 % | bcrypt, JWT `httpOnly` + revocable, Zod en toda entrada, rate limiting, RSC y bundle de 103 kB. | `src/lib/`, salida de `next build` |
@@ -372,7 +376,19 @@ npm run typecheck   # tsc --noEmit → 0 errores
 npm run lint        # eslint . → 0 errores, 0 avisos
 ```
 
-### 3. Comprobación manual de los flujos
+### 3. Comprobación automática de los flujos funcionales
+
+```bash
+npm run build && npm start          # en una terminal
+npm run prueba -- http://localhost:3000
+```
+
+El script recorre los siete flujos principales (registro, catálogo con filtros, disponibilidad y
+reserva, cancelación y reutilización del hueco, panel de administración con el ciclo de vida de la
+cita, alta y baja de servicios, formulario de contacto y cierre de sesión) y comprueba **46
+reglas** de negocio y de seguridad, indicando el resultado de cada una.
+
+### 4. Comprobación manual de los flujos
 
 | Flujo | Pasos | Resultado esperado |
 | --- | --- | --- |

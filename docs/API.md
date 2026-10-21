@@ -393,7 +393,9 @@ Crea una cita. Todas las reglas de negocio se validan en
 
 1. La fecha debe respetar la **ventana de anticipación** y no estar en el pasado.
 2. La hora debe caer dentro de una **franja de atención** del servicio.
-3. El hueco debe estar **libre** (índice único `(servicioId, fecha, hora)`).
+3. El hueco debe estar **libre**: solo bloquean las citas `PENDIENTE` y `CONFIRMADA`
+   (índice único parcial `(servicioId, fecha, hora)`). Una cita `CANCELADA` libera su horario,
+   de modo que el hueco vuelve a estar disponible y se puede volver a reservar.
 4. El usuario no puede superar el **límite de citas activas**.
 
 **Respuestas**
@@ -446,6 +448,9 @@ CONFIRMADA → COMPLETADA | CANCELADA
 COMPLETADA → (terminal)
 CANCELADA  → (terminal)
 ```
+
+Repetir el estado actual (`CONFIRMADA → CONFIRMADA`) es idempotente y devuelve `200`.
+Cualquier otra transición devuelve `422` con un mensaje que explica el motivo.
 
 | Código | Cuándo |
 | --- | --- |
@@ -509,6 +514,11 @@ curl "http://localhost:3000/api/disponibilidad?servicioId=cmvilm4ql001av0woig2aj
 | --- | --- |
 | `200` | Cálculo correcto (puede devolver `huecos: []`). |
 | `400` | Falta `servicioId` o la fecha no tiene formato `AAAA-MM-DD`. |
+
+> Un hueco aparece como `ocupado` cuando existe una cita `PENDIENTE` o `CONFIRMADA` para ese
+> servicio, fecha y hora; una cita `CANCELADA` lo libera. El criterio es exactamente el mismo que
+> aplica el índice único parcial de la base de datos, por lo que la agenda nunca ofrece un horario
+> que la reserva vaya a rechazar con un `409`.
 
 ---
 
@@ -659,7 +669,10 @@ Recibe un mensaje del formulario de contacto y lo persiste en la tabla
 
 > El contenido almacenado nunca se devuelve al cliente, lo que evita acumular datos
 > personales en respuestas intermedias.
-
+>
+> La trampa `honeypot` se procesa **antes** de validar el resto de los campos: si llega relleno,
+> la API responde `201` con el mensaje de éxito habitual pero **no guarda nada**. Así el bot no
+> recibe ninguna señal de que ha sido detectado.
 ---
 
 ## Códigos de error

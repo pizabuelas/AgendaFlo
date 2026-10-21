@@ -238,17 +238,30 @@ Citas reservadas (RF-04).
 | `motivoCancelacion` | `text` | opcional | Motivo registrado al cancelar. |
 | `createdAt` / `updatedAt` | `timestamp` | `NOT NULL` | Auditoría. |
 
-**Constraint clave**
+**Índice clave (único parcial)**
 
 ```sql
-UNIQUE (servicioId, fecha, hora)
+CREATE UNIQUE INDEX "reservas_hueco_activo"
+  ON "reservas" ("servicioId", "fecha", "hora")
+  WHERE "estado" IN ('PENDIENTE', 'CONFIRMADA');
 ```
 
 Es la garantía real de que **no se puede sobre-reservar un hueco**: la restricción la impone el
 motor de la base de datos, no la aplicación. Si dos usuarios pulsan "Reservar" en el mismo
 segundo, una de las dos inserciones falla con `P2002` y la interfaz muestra un aviso.
 
-Índices: `@@index([usuarioId, fecha])`, `@@index([estado])`.
+Al ser **parcial** solo cubre las citas activas: cuando una cita se cancela su hueco vuelve a
+estar libre y se puede volver a reservar, mientras la cita cancelada se conserva en el historial.
+La aplicación y el índice comparten exactamente el mismo criterio (`PENDIENTE` y `CONFIRMADA` son
+las únicas citas que bloquean un hueco), de modo que la agenda nunca ofrece un horario que luego
+se rechace con un `409`.
+
+> El índice parcial no se puede expresar en el esquema de Prisma: en PostgreSQL lo crea la
+> migración [`20260103000000_indice_parcial_reservas`](../prisma/migrations/20260103000000_indice_parcial_reservas/migration.sql)
+> y en SQLite lo aplica el script [`scripts/crear-indices.mjs`](../scripts/crear-indices.mjs)
+> (`npm run db:push`).
+
+Índices: `@@index([servicioId, fecha])`, `@@index([usuarioId, fecha])`, `@@index([estado])`.
 
 ### `notificaciones`
 
@@ -315,7 +328,7 @@ entera con todos sus servicios ya cargados en las reservas.
 | `servicios` | `slug` | UNIQUE | URL pública del servicio. |
 | `horarios` | `(servicioId, diaSemana, horaInicio)` | UNIQUE | No duplicar franjas. |
 | `reservas` | `codigo` | UNIQUE | Código de cita único. |
-| `reservas` | `(servicioId, fecha, hora)` | UNIQUE | **Anti-sobre-reserva.** |
+| `reservas` | `(servicioId, fecha, hora)` **WHERE estado IN ('PENDIENTE','CONFIRMADA')** | UNIQUE parcial | **Anti-sobre-reserva** de los huecos activos; una cita cancelada libera su horario. |
 
 ### Índices secondary
 
@@ -328,6 +341,7 @@ entera con todos sus servicios ya cargados en las reservas.
 | `servicios` | `(activo)` | Catálogo público. |
 | `servicios` | `(destacado)` | Servicios destacados de la portada. |
 | `horarios` | `(servicioId)` | Cargar las franjas de un servicio. |
+| `reservas` | `(servicioId, fecha)` | Calcular la disponibilidad de un hueco. |
 | `reservas` | `(usuarioId, fecha)` | Agenda del usuario. |
 | `reservas` | `(estado)` | Métricas del panel. |
 | `notificaciones` | `(usuarioId, leida)` | Centro de notificaciones. |
@@ -385,9 +399,11 @@ entera con todos sus servicios ya cargados en las reservas.
    middleware comprueba que el `jti` exista y no esté revocado, de modo que cerrar sesión o
    degradar a un usuario a `USUARIO` surte efecto inmediato.
 
-7. **Índice único anti-sobre-reserva.**
-   `UNIQUE (servicioId, fecha, hora)` traslada la regla de negocio al motor: es la única forma
-   de garantizarlo ante peticiones concurrentes.
+7. **Índice único parcial anti-sobre-reserva.**
+   `UNIQUE (servicioId, fecha, hora) WHERE estado IN ('PENDIENTE','CONFIRMADA')` traslada la regla
+   de negocio al motor: es la única forma de garantizarlo ante peticiones concurrentes. Al ser
+   parcial, cancelar una cita libera su horario para volver a reservarlo sin perder el historial,
+   y la agenda nunca ofrece un hueco que el motor vaya a rechazar.
 
 8. **Búsqueda insensible a mayúsculas.**
    En PostgreSQL se usa `mode: "insensitive"`; en SQLite la comparación por defecto ya es
@@ -417,9 +433,13 @@ Historial actual:
 | --- | --- |
 | `20260101000000_init` | Esquema inicial: usuarios, sesiones, categorías, servicios, horarios, reservas y notificaciones. |
 | `20260102000000_mensajes_contacto` | Tabla `mensajes_contacto` para el formulario de contacto. |
+| `20260103000000_indice_parcial_reservas` | Sustituye la restricción única completa de las reservas por el índice único parcial `reservas_hueco_activo`, que libera el hueco cuando la cita se cancela. |
 
 > En **SQLite** no se usan migraciones: `db:push` sincroniza el esquema directamente, lo que
 > mantiene el arranque local inmediato. Las migraciones de producción son las de PostgreSQL.
+> El índice parcial no lo crea `db push` (Prisma no lo expresa en el esquema), por lo que el
+> script `scripts/crear-indices.mjs` lo aplica al final de `npm run db:push`; en PostgreSQL lo
+> aplica la migración.
 
 ---
 

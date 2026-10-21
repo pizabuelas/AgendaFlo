@@ -125,8 +125,11 @@ y preparado para desplegarse en la nube con un solo clic en **Vercel**.
 ### Módulo interactivo de agenda (RF-04)
 
 - Calendario de **14 días** con los huecos libres calculados en tiempo real.
-- Bloqueo de sobre-reservas garantizado por un **índice único** `(servicioId, fecha, hora)` en la
-  base de datos, no solo en el código.
+- Bloqueo de sobre-reservas garantizado por un **índice único parcial**
+  `(servicioId, fecha, hora) WHERE estado IN ('PENDIENTE','CONFIRMADA')` en la base de datos, no
+  solo en el código. Al ser parcial, cancelar una cita libera su horario para volver a reservarlo.
+- Ciclo de vida controlado: `PENDIENTE → CONFIRMADA → COMPLETADA`, con `CANCELADA` disponible
+  desde los dos primeros; `COMPLETADA` y `CANCELADA` son estados terminales.
 - Reglas de negocio: franja de atención, anticipación mínima, límite de citas activas por usuario
   y citas en el pasado.
 - Cada reserva recibe un **código único** (`CIT-XXXXXX`) y genera una notificación.
@@ -283,6 +286,7 @@ openssl rand -base64 48
 | `npm run setup` | `db:push` + `db:seed` en un solo paso. |
 | `npm run capturas` | Genera las capturas del README (requiere el servidor en marcha). |
 | `npm run verificar` | Comprobación funcional por HTTP de páginas y APIs. |
+| `npm run prueba` | Prueba funcional de los flujos principales (46 reglas de negocio y seguridad). |
 
 ---
 
@@ -303,6 +307,27 @@ para que la aplicación tenga contenido realista desde el primer arranque.
 
 ---
 
+## Comprobaciones automáticas
+
+El proyecto incluye tres batteries de comprobación que se ejecutan contra el servidor en marcha:
+
+```bash
+npm run build && npm start        # en una terminal
+
+npm run typecheck                 # tsc --noEmit  → 0 errores
+npm run lint                      # eslint .      → 0 errores, 0 avisos
+npm run verificar -- http://localhost:3000   # 14 páginas + 7 APIs
+npm run prueba -- http://localhost:3000     # 46 reglas de negocio y seguridad
+```
+
+`npm run prueba` recorre los flujos reales de la aplicación: registro con validaciones, búsqueda y
+filtros combinados del catálogo, cálculo de disponibilidad, reserva, cancelación, reutilización
+del hueco liberado, ciclo de vida de la cita en el panel de administración (incluidos los estados
+terminales), alta/edición/baja de servicios, formulario de contacto con trampa *honeypot* y cierre
+de sesión con revocación del token.
+
+---
+
 ## Estructura del proyecto
 
 ```
@@ -318,10 +343,15 @@ para que la aplicación tenga contenido realista desde el primer arranque.
 │   ├── migrations/           # Migraciones de PostgreSQL
 │   └── seed.ts               # Datos de demostración
 ├── scripts/
-│   ├── prisma-generate.mjs       # Selecciona el esquema según DATABASE_PROVIDER
+│   ├── prisma-esquema.mjs        # Resuelve el esquema según DATABASE_PROVIDER
+│   ├── prisma-generate.mjs       # Genera el cliente Prisma
+│   ├── prisma-cli.mjs            # db push / reset / studio con el esquema correcto
+│   ├── prisma-seed.mjs           # Carga la semilla con el esquema correcto
 │   ├── generate-sqlite-schema.mjs # Deriva el esquema SQLite
+│   ├── crear-indices.mjs         # Índices parciales (no expresables en Prisma)
 │   ├── capturas.mjs              # Generador de capturas (CDP)
-│   └── verificar.mjs             # Test funcional por HTTP
+│   ├── verificar.mjs             # Test funcional por HTTP
+│   └── prueba-flujos.mjs         # Test de los flujos principales de negocio
 ├── src/
 │   ├── app/                  # Rutas (App Router)
 │   │   ├── api/              # Route Handlers (REST)
