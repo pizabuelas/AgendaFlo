@@ -22,7 +22,8 @@
     "db:reset": "node scripts/prisma-cli.mjs reset && node scripts/crear-indices.mjs",
     "setup": "npm run db:push && npm run db:seed",
     "capturas": "node --expose-gc scripts/capturas.mjs",
-    "verificar": "node scripts/verificar.mjs"
+    "verificar": "node scripts/verificar.mjs",
+    "prueba": "node scripts/prueba-flujos.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
