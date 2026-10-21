@@ -128,7 +128,8 @@ model Horario {
   @@map("horarios")
 }
 
-/// Cita reservada (RF-04). El índice único impide sobre-reservar un hueco.
+/// Cita reservada (RF-04). Un índice único parcial impide sobre-reservar un
+/// hueco activo y libera el horario cuando la cita se cancela.
 model Reserva {
   id          String   @id @default(cuid())
   codigo      String   @unique
@@ -151,7 +152,7 @@ model Reserva {
   usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   servicio Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
 
-  @@unique([servicioId, fecha, hora])
+  @@index([servicioId, fecha])
   @@index([usuarioId, fecha])
   @@index([estado])
   @@map("reservas")

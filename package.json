@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/prisma-generate.mjs",
     "db:generate": "node scripts/prisma-generate.mjs",
-    "db:push": "node scripts/generate-sqlite-schema.mjs && prisma db push --schema prisma/schema.sqlite.prisma",
+    "db:push": "node scripts/generate-sqlite-schema.mjs && prisma db push --schema prisma/schema.sqlite.prisma && node scripts/crear-indices.mjs",
     "db:seed": "prisma db seed --schema prisma/schema.sqlite.prisma",
     "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema prisma/schema.prisma",

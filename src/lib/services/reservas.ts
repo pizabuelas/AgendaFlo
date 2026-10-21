@@ -5,6 +5,7 @@ import { filtroTexto } from "@/lib/services/filtros";
 import {
   DIAS_MAXIMO_ANTICIPACION,
   DIAS_MINIMO_ANTICIPACION,
+  ESTADO_LABEL,
   MARGEN_MINUTOS_ANTICIPACION,
   MAX_RESERVAS_ACTIVAS,
   type EstadoReserva,
@@ -31,6 +32,21 @@ import type { DatosReserva } from "@/lib/validators";
  */
 
 const ESTADOS_ACTIVOS: EstadoReserva[] = ["PENDIENTE", "CONFIRMADA"];
+
+/**
+ * Ciclo de vida de una cita (RF-04).
+ *
+ * El recorrido es lineal y los dos últimos estados son terminales: una cita
+ * completada o cancelada no vuelve atrás. La misma tabla es la que aplica el
+ * panel de administración, de modo que la API no permite saltarse las reglas
+ * que la interfaz sí respeta.
+ */
+export const TRANSICIONES_RESERVA: Record<EstadoReserva, EstadoReserva[]> = {
+  PENDIENTE: ["CONFIRMADA", "CANCELADA"],
+  CONFIRMADA: ["COMPLETADA", "CANCELADA"],
+  COMPLETADA: [],
+  CANCELADA: [],
+};
 
 /** Resultado de una operación: correcto o error con mensaje para el usuario. */
 export type ResultadoOperacion<T = undefined> =
@@ -316,10 +332,17 @@ export async function cambiarEstadoReserva(
     return { ok: false, mensaje: "La reserva no existe.", codigo: 404 };
   }
 
-  if (reserva.estado === "CANCELADA" && estado !== "CANCELADA") {
+  /* La cita solo puede avanzar en su ciclo de vida (RF-04). */
+  const estadoActual = reserva.estado as EstadoReserva;
+  const permitidas = [estadoActual, ...TRANSICIONES_RESERVA[estadoActual]];
+
+  if (!permitidas.includes(estado)) {
     return {
       ok: false,
-      mensaje: "Una cita cancelada no puede volver a activarse. Crea una nueva reserva.",
+      mensaje:
+        estadoActual === "CANCELADA"
+          ? "Una cita cancelada no puede volver a activarse. Crea una nueva reserva."
+          : `Una cita ${ESTADO_LABEL[estadoActual].toLowerCase()} no puede pasar a ${ESTADO_LABEL[estado].toLowerCase()}.`,
       codigo: 422,
     };
   }
