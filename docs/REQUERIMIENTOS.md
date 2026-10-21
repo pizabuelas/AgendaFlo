@@ -318,12 +318,12 @@ First Load JS shared by all          103 kB
 | # | Subrequisito | Implementación | Ficheros |
 | --- | --- | --- | --- |
 | 4.1 | Base de datos relacional | **PostgreSQL** en producción con **Prisma ORM**. | `prisma/schema.prisma:23` |
-| 4.2 | Fallback local sin instalación | **SQLite** en desarrollo, con el esquema derivado automáticamente del esquema maestro. | `scripts/generate-sqlite-schema.mjs`, `scripts/prisma-generate.mjs` |
+| 4.2 | Fallback local sin instalación | **SQLite** en desarrollo, con el esquema derivado automáticamente del esquema maestro. | `scripts/generate-sqlite-schema.mjs`, `scripts/prisma-generate.mjs`, `scripts/prisma-cli.mjs` |
 | 4.3 | Esquema normalizado | 8 tablas con claves primarias `cuid`, claves foráneas e índices. | `prisma/schema.prisma` |
 | 4.4 | Migraciones versionadas | `prisma/migrations/` con SQL de PostgreSQL, listo para `prisma migrate deploy`. | `prisma/migrations/` |
 | 4.5 | Seeds de demostración | Datos realistas e idempotentes: 3 usuarios, 5 categorías, 14 servicios, 45 horarios, 6 reservas, 3 notificaciones. | `prisma/seed.ts` |
 | 4.6 | Integridad referencial | `ON DELETE CASCADE` y `ON DELETE RESTRICT` según el caso. | `prisma/schema.prisma` |
-| 4.7 | Restricciones de unicidad | `email`, `slug`, `codigo`, `jti` y `(servicioId, fecha, hora)`. | `prisma/schema.prisma` |
+| 4.7 | Restricciones de unicidad | `email`, `slug`, `codigo`, `jti` y el índice único parcial `(servicioId, fecha, hora)` sobre las citas activas. | `prisma/schema.prisma`, `prisma/migrations/20260103000000_indice_parcial_reservas/migration.sql` |
 | 4.8 | Persistencia de las acciones | Todas las acciones de la interfaz (reservas, servicios, usuarios, notificaciones, contacto) terminan en la base de datos. | `src/lib/services/**` |
 | 4.9 | Conexión única y reutilizable | Instancia de Prisma en modo singleton para el desarrollo en caliente. | `src/lib/prisma.ts` |
 | 4.10 | Documentación del modelo | Diagrama ER en Mermaid y descripción tabla por tabla. | `docs/BASE-DE-DATOS.md` |
