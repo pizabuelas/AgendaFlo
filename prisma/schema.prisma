@@ -1,0 +1,190 @@
+// =============================================================================
+// AgendaFlow — Esquema de base de datos (Prisma)
+// -----------------------------------------------------------------------------
+// Este archivo es la ÚNICA fuente de verdad del modelo de datos y está escrito
+// para PostgreSQL, que es el motor de producción.
+//
+//   · PostgreSQL (producción) →  prisma/schema.prisma
+//   · SQLite      (desarrollo) →  prisma/schema.sqlite.prisma
+//
+// El archivo de SQLite no se edita a mano: se genera automáticamente desde
+// este mediante `node scripts/generate-sqlite-schema.mjs` (lo ejecutan los
+// scripts `db:push`, `db:seed` y `db:generate` de package.json).
+//
+// NOTA: por compatibilidad con ambos motores los estados se guardan como
+// String (validados con Zod) en lugar de usar enums nativos de Prisma, y se
+// evita `Decimal` para que los importes se comporten igual en los dos motores.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Usuario de la plataforma. `rol` = "USUARIO" | "ADMIN" (RF-01).
+model Usuario {
+  id           String   @id @default(cuid())
+  nombre       String
+  email        String   @unique
+  passwordHash String
+  /// "USUARIO" | "ADMIN"
+  rol          String   @default("USUARIO")
+  telefono     String?
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  reservas       Reserva[]
+  notificaciones Notificacion[]
+  sesiones       Sesion[]
+
+  @@index([rol])
+  @@index([activo])
+  @@map("usuarios")
+}
+
+/// Sesión emitida tras un login. Permite revocar tokens al cerrar sesión.
+model Sesion {
+  id        String   @id @default(cuid())
+  jti       String   @unique
+  usuarioId String
+  expiresAt DateTime
+  revocada  Boolean  @default(false)
+  userAgent String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("sesiones")
+}
+
+/// Categoría de servicio — uno de los filtros combinables de RF-03.
+model Categoria {
+  id          String   @id @default(cuid())
+  nombre      String   @unique
+  slug        String   @unique
+  descripcion String?
+  /// Color de acento (Tailwind) usado en la interfaz.
+  color       String   @default("indigo")
+  activa      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  servicios Servicio[]
+
+  @@map("categorias")
+}
+
+/// Entidad principal del sistema (RF-02): el servicio que se puede reservar.
+model Servicio {
+  id          String   @id @default(cuid())
+  nombre      String
+  slug        String   @unique
+  descripcion String
+  precio      Float
+  duracionMin Int      @default(30)
+  imagen      String?
+  /// Clave del icono Lucide renderizado en la tarjeta.
+  icono       String   @default("calendar")
+  /// Color de acento (Tailwind) de la tarjeta.
+  color       String   @default("indigo")
+  /// Baja lógica: los servicios dados de baja no aparecen en el catálogo.
+  activo      Boolean  @default(true)
+  destacado   Boolean  @default(false)
+  categoriaId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categoria Categoria @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  reservas  Reserva[]
+  horarios  Horario[]
+
+  @@index([categoriaId])
+  @@index([activo])
+  @@index([destacado])
+  @@map("servicios")
+}
+
+/// Franja de atención semanal de un servicio (base del calendario RF-04).
+model Horario {
+  id         String  @id @default(cuid())
+  servicioId String
+  /// 0 = domingo … 6 = sábado
+  diaSemana  Int
+  horaInicio String
+  horaFin    String
+  activo     Boolean @default(true)
+
+  servicio Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  @@unique([servicioId, diaSemana, horaInicio])
+  @@index([servicioId])
+  @@map("horarios")
+}
+
+/// Cita reservada (RF-04). El índice único impide sobre-reservar un hueco.
+model Reserva {
+  id          String   @id @default(cuid())
+  codigo      String   @unique
+  usuarioId   String
+  servicioId  String
+  /// Día de la cita (medianoche en UTC).
+  fecha       DateTime
+  /// Hora de inicio en formato "HH:mm".
+  hora        String
+  duracionMin Int
+  /// Precio congelado en el momento de la reserva.
+  precio      Float
+  /// "PENDIENTE" | "CONFIRMADA" | "COMPLETADA" | "CANCELADA"
+  estado      String   @default("PENDIENTE")
+  notas       String?
+  motivoCancelacion String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  usuario  Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  servicio Servicio @relation(fields: [servicioId], references: [id], onDelete: Cascade)
+
+  @@unique([servicioId, fecha, hora])
+  @@index([usuarioId, fecha])
+  @@index([estado])
+  @@map("reservas")
+}
+
+/// Registro de avisos mostrados al usuario (RF-05).
+model Notificacion {
+  id        String   @id @default(cuid())
+  usuarioId String
+  titulo    String
+  mensaje   String
+  /// "EXITO" | "ERROR" | "INFO"
+  tipo      String   @default("INFO")
+  leida     Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, leida])
+  @@map("notificaciones")
+}
+
+/// Mensaje enviado desde el formulario de contacto de la web.
+model MensajeContacto {
+  id       String   @id @default(cuid())
+  nombre   String
+  email    String
+  asunto   String
+  mensaje  String
+  /// El administrador marca el mensaje como atendido.
+  atendido Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([atendido])
+  @@map("mensajes_contacto")
+}
