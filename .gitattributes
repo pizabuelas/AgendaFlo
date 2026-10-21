@@ -1,0 +1,16 @@
+# Normalización de fin de línea: el repositorio guarda LF y Git convierte a CRLF
+# en Windows para evitar que todo el proyecto aparezca como modificado.
+* text=auto eol=lf
+
+# Ficheros binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Fichivos de Prisma generados (SQLite)
+prisma/schema.sqlite.prisma linguist-generated=true
