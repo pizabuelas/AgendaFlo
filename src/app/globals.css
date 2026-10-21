@@ -1,0 +1,300 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   AgendaFlow — Sistema de diseño
+   Tokens semánticos + modo claro/oscuro + utilidades de componente.
+   ========================================================================== */
+
+/* Modo oscuro por clase en <html class="dark"> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* -------------------------------------------------------------------------- */
+/* Paleta                                                                     */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  /* Marca: violeta-indigo */
+  --brand-50: #f3f2ff;
+  --brand-100: #e9e6ff;
+  --brand-200: #d5d0ff;
+  --brand-300: #b3a8ff;
+  --brand-400: #8d78fc;
+  --brand-500: #6f4bf7;
+  --brand-600: #5c31e0;
+  --brand-700: #4d23bc;
+  --brand-800: #412099;
+  --brand-900: #381e7c;
+  --brand-950: #221052;
+
+  /* Superficies y texto */
+  --canvas: #f8f8fb;
+  --surface: #ffffff;
+  --surface-muted: #f2f3f7;
+  --surface-strong: #e9eaf0;
+  --line: #e4e5ec;
+  --line-strong: #d3d5df;
+  --ink: #15171f;
+  --ink-muted: #5b6070;
+  --ink-subtle: #868b9c;
+
+  /* Semánticos */
+  --success: #0f8a5f;
+  --success-soft: #e6f6ef;
+  --warning: #b56a00;
+  --warning-soft: #fdf1e0;
+  --danger: #c62f3f;
+  --danger-soft: #fdecee;
+  --info: #1f6fd0;
+  --info-soft: #e8f1fd;
+
+  /* Sombras */
+  --shadow-soft: 0 1px 2px rgb(16 18 32 / 0.04), 0 4px 16px -6px rgb(16 18 32 / 0.08);
+  --shadow-lift: 0 2px 4px rgb(16 18 32 / 0.04), 0 18px 40px -18px rgb(16 18 32 / 0.22);
+}
+
+.dark {
+  --canvas: #0c0d14;
+  --surface: #14161f;
+  --surface-muted: #1b1e29;
+  --surface-strong: #262a38;
+  --line: #262a36;
+  --line-strong: #343949;
+  --ink: #f0f1f6;
+  --ink-muted: #a3a8ba;
+  --ink-subtle: #7b8093;
+
+  --success: #3ecf8e;
+  --success-soft: #102a20;
+  --warning: #e2a441;
+  --warning-soft: #2b2113;
+  --danger: #f87181;
+  --danger-soft: #2e161a;
+  --info: #6aa9f5;
+  --info-soft: #131f2f;
+
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.4), 0 4px 16px -6px rgb(0 0 0 / 0.5);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.4), 0 18px 40px -18px rgb(0 0 0 / 0.7);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Exposición a Tailwind                                                       */
+/* -------------------------------------------------------------------------- */
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --color-brand-50: var(--brand-50);
+  --color-brand-100: var(--brand-100);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
+  --color-brand-900: var(--brand-900);
+  --color-brand-950: var(--brand-950);
+
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-strong: var(--surface-strong);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-lift: var(--shadow-lift);
+
+  --radius-xl2: 1.125rem;
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.35s ease-out both;
+  --animate-scale-in: scale-in 0.18s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Base                                                                       */
+/* -------------------------------------------------------------------------- */
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Foco visible y coherente en toda la aplicación (RNF-01) */
+  :focus-visible {
+    outline: 2px solid var(--brand-500);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+
+  ::selection {
+    background-color: var(--brand-200);
+    color: var(--brand-950);
+  }
+
+  .dark ::selection {
+    background-color: var(--brand-700);
+    color: var(--brand-50);
+  }
+
+  /* Barra de desplazamiento discreta */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--line-strong);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--ink-subtle);
+    background-clip: content-box;
+  }
+
+  /* Respeta la preferencia de reducir el movimiento */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Componentes                                                                */
+/* -------------------------------------------------------------------------- */
+
+@layer components {
+  /* Superficie base reutilizable */
+  .superficie {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Degradado de marca para bloques destacados */
+  .degradado-marca {
+    background-image: linear-gradient(
+      135deg,
+      var(--brand-600) 0%,
+      var(--brand-500) 45%,
+      #8b5cf6 100%
+    );
+  }
+
+  .text-degradado {
+    background-image: linear-gradient(120deg, var(--brand-700), var(--brand-500) 55%, #a855f7);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Retícula decorativa del encabezado */
+  .reticula {
+    background-image:
+      linear-gradient(to right, rgb(255 255 255 / 0.07) 1px, transparent 1px),
+      linear-gradient(to bottom, rgb(255 255 255 / 0.07) 1px, transparent 1px);
+    background-size: 56px 56px;
+  }
+
+  /* Esqueleto de carga (RF-05) */
+  .esqueleto {
+    background-image: linear-gradient(
+      90deg,
+      var(--surface-muted) 0%,
+      var(--surface-strong) 40%,
+      var(--surface-muted) 80%
+    );
+    background-size: 200% 100%;
+    animation: var(--animate-shimmer);
+  }
+
+  /* Línea de tiempo vertical del historial de reservas */
+  .linea-tiempo::before {
+    content: "";
+    position: absolute;
+    left: 1.0625rem;
+    top: 2.25rem;
+    bottom: -1.5rem;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--line), transparent);
+  }
+}
